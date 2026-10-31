@@ -1,0 +1,23 @@
+[project]
+name = "text-to-sql-cli-agent"
+version = "0.1.0"
+description = "Interactive text-to-SQL CLI agent on open-weight models served by Fireworks AI"
+requires-python = ">=3.11"
+dependencies = [
+    "openai",
+    "ipython",
+    "pandas",
+    "pydantic",
+    "python-dotenv",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+cli = "src.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

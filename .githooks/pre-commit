@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+#
+# Pre-commit secret guard for the Text-to-SQL repo.
+# Blocks a commit if a staged change looks like it contains a secret, a token,
+# or a file that should never be tracked. Bypass in a true emergency with
+# `git commit --no-verify` (avoid it).
+#
+# Portable to bash 3.2 (macOS system bash). Intentionally does NOT use `set -e`:
+# the guard signals problems via BLOCK, and `set -e` interacts badly with the
+# `A && B` short-circuit checks below.
+#
+set -u
+
+BLOCK=0
+fail() { printf '\xE2\x9D\x8C pre-commit blocked: %s\n   -> %s\n' "$1" "$2" >&2; BLOCK=1; }
+
+# Newline-separated list of files staged for commit (added/copied/modified).
+STAGED="$(git diff --cached --name-only --diff-filter=ACM)"
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+# 1) Never allow these paths/filenames to be committed, whatever .gitignore says.
+OLDIFS="$IFS"; IFS='
+'
+for f in $STAGED; do
+  case "$f" in
+    .env.example) : ;;                                  # the one allowed env file
+    .env|.env.*)  fail "staged env file: $f" "keep values in .env (gitignored); only .env.example is allowed" ;;
+    *.key|*.pem|id_rsa|id_ed25519|*.p12|*.pfx)
+                  fail "staged key/credential file: $f" "remove it: git rm --cached \"$f\"" ;;
+    private/*|_private/*|*.mhtml)
+                  fail "staged local-only file: $f" "this path is gitignored on purpose; do not force-add it" ;;
+  esac
+done
+IFS="$OLDIFS"
+
+# 2) Scan staged CONTENT (added lines only) for secret patterns.
+DIFF="$(git diff --cached --unified=0 --no-color | grep '^+' | grep -v '^+++' || true)"
+ALLOW='your_.*_here|<your|example|placeholder|xxxx'
+
+scan() { # <regex> <label>
+  hit="$(printf '%s\n' "$DIFF" | grep -nEi -- "$1" | grep -viE "$ALLOW" || true)"
+  if [ -n "$hit" ]; then
+    fail "possible $2 in staged content" "$(printf '%s' "$hit" | head -1)"
+  fi
+  return 0
+}
+
+scan 'fw_[A-Za-z0-9_-]{20,}'                          "API key"
+scan '[A-Z][A-Z0-9]{4,}[_-]LAUNCH[0-9A-Z]+'          "promo/access code"
+scan '(API_KEY|APIKEY|SECRET|TOKEN|PASSWORD|ACCESS_KEY)[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9_-]{16,}' "hardcoded credential"
+scan 'sk-[A-Za-z0-9]{20,}'                            "API key"
+scan 'AKIA[0-9A-Z]{16}'                              "AWS access key id"
+scan '-----BEGIN [A-Z ]*PRIVATE KEY-----'            "private key block"
+
+if [ "$BLOCK" -ne 0 ]; then
+  printf '\nCommit aborted. Move secrets into .env (gitignored) or use env vars.\n' >&2
+  exit 1
+fi
+exit 0

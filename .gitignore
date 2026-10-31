@@ -1,0 +1,76 @@
+# =============================================================================
+# Local-only files — never committed
+# =============================================================================
+# Personal notes, scratch work, and downloaded reference material live here.
+private/
+_private/
+scratch/
+*.mhtml
+# Reference documents live locally only.
+*.pdf
+
+# =============================================================================
+# Secrets & environment
+# =============================================================================
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets.*
+.fireworks/
+api.txt
+*api*key*.txt
+*.secret
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.uv/
+.python-version
+
+# Notebooks
+.ipynb_checkpoints/
+
+# =============================================================================
+# Data & model artifacts (regenerable / large)
+# =============================================================================
+*.db
+*.duckdb
+*.parquet
+data/*.db
+data/*.duckdb
+# ...except the reference database, which ships with the repo so the CLI runs
+# out of the box (1 MB, rebuildable with ./setup.sh).
+!data/Chinook.db
+*.jsonl
+!**/examples/*.jsonl
+checkpoints/
+*.gguf
+*.safetensors
+models/local/
+
+# =============================================================================
+# Tooling / OS
+# =============================================================================
+.DS_Store
+Screenshot*.png
+Screen Shot*.png
+.idea/
+.vscode/
+*.log
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
